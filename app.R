@@ -13,10 +13,10 @@ ui <- bootstrapPage(
                sidebarPanel(
                  numericInput("pt_est",
                               "Treatment Effect Point Estimate",
-                              value = 0),
+                              value = 0.5),
                  numericInput("upper_ci",
                               "Treatment Effect Upper Confidence Limit",
-                              value = 0),
+                              value = 0.9),
                  numericInput("ci_width",
                               "Confidence Interval Width",
                               value = 0.95,
@@ -25,7 +25,8 @@ ui <- bootstrapPage(
                               step = 0.01),
                  selectInput("est_type",
                              "Estimate Type",
-                             choices = c("HR", "OR", "RR"))
+                             choices = c("HR", "OR", "RR"),
+                             selected = "HR")
                ),
                mainPanel(
                  h4("About this Application:"),
@@ -63,14 +64,14 @@ ui <- bootstrapPage(
                              ticks = FALSE),
                  hr(),
                  sliderInput("hr",
-                             "Cutoff for HR for computing the width of the prior distribution (e.g., MCID):",
+                             "Value of interest for computing the width of the prior distribution (e.g., MCID):",
                              min = 0.25,
                              max = 1.25,
                              value = 0.5,
                              step = 0.01,
                              ticks = FALSE),
                  sliderInput("pr",
-                             "Probability that the HR is less than this cutoff:",
+                             "Probability that the prior is less than this value:",
                              min = 0,
                              max = 1,
                              value = 0.05,
@@ -94,7 +95,7 @@ ui <- bootstrapPage(
                              post = "%",
                              ticks = FALSE),
                  sliderInput("hr_post",
-                             "Posterior HR of Interest: ",
+                             "Posterior Value of Interest: ",
                              min = 0.5,
                              max = 1.25,
                              value = 0.9,
@@ -118,7 +119,7 @@ ui <- bootstrapPage(
                                ),
                sidebarPanel(
                  sliderInput("hr_heat",
-                             "Posterior HR of Interest:",
+                             "Posterior Value of Interest:",
                              min = 0.5,
                              max = 1.25,
                              value = 0.9,
@@ -153,11 +154,24 @@ server <- function(input, output, session) {
   prior_theta <- reactive({log(theta_in())})
   prior_sd <- reactive({sd_in()})
   
+  # Estimate Type Labels
+  est_type <- reactive({input$est_type})
+  short_lab <- reactive({est_type()})
+  long_lab <- reactive({
+    if (short_lab() == "HR"){
+      "Hazard Ratio"
+    } else if (short_lab() == "OR"){
+      "Odds Ratio"
+    } else {
+      "Relative Risk"
+    }
+  })
+  
   # Update sliders based on SD and Pr and HR
   observeEvent(input$sd, {
     updateSliderInput(session,
                       inputId = "pr",
-                      label = "Probability that the HR is less than this cutoff:",
+                      label = "Probability that the prior is less than this value:",
                       value = round(pnorm(log(hr_in()), log(theta_in()), sd_in()), 3)
     )
   })
@@ -165,7 +179,7 @@ server <- function(input, output, session) {
   observeEvent(input$hr, {
     updateSliderInput(session,
                       inputId = "pr",
-                      label = "Probability that the HR is less than this cutoff:",
+                      label = "Probability that the prior is less than this value:",
                       value = round(pnorm(log(hr_in()), log(theta_in()), sd_in()), 3),
                       min = round(pnorm(log(hr_in()), log(theta_in()), 0.1), 3),
                       max = round(pnorm(log(hr_in()), log(theta_in()), 1), 3)
@@ -176,7 +190,7 @@ server <- function(input, output, session) {
   observeEvent(input$theta, {
     updateSliderInput(session,
                       inputId = "pr",
-                      label = "Probability that the HR is less than this cutoff:",
+                      label = "Probability that the prior is less than this value:",
                       value = round(pnorm(log(hr_in()), log(theta_in()), sd_in()), 3),
                       min = round(pnorm(log(hr_in()), log(theta_in()), 0.1), 3),
                       max = round(pnorm(log(hr_in()), log(theta_in()), 1), 3)
@@ -244,17 +258,19 @@ server <- function(input, output, session) {
                           labels = c("Prior", "Likelihood", "Posterior")) + 
        xlim(0, 2) + 
        labs(
-         x = "Hazard Ratio",
+         x = long_lab(),
          y = "Probability Density"
        ) + 
        annotate(geom = "text",
-                label = paste("Posterior probability HR < 1: ", 
+                label = paste("Posterior probability ", short_lab(),
+                              paste(" < 1: ", 
                               round(pnorm(log(1), post_theta(), post_sd(), 
-                                          lower.tail = TRUE), 3), sep = ""),
+                                          lower.tail = TRUE), 3), sep = ""), sep = ""),
                 x = 2, y = max(plot_data()$y), hjust = 1,
                 fontface = "bold") + 
        annotate(geom = "text",
-                label = paste("Posterior probability HR < ", hr_post(),
+                label = paste("Posterior probability ", short_lab(),
+                              paste(" < ", hr_post(), sep = ""), 
                               paste(": ", round(pnorm(log(hr_post()), post_theta(), post_sd(),
                                                           lower.tail = TRUE), 3), sep = ""), sep = ""),
                 x = 2, y = max(plot_data()$y) - max(plot_data()$y/25), hjust = 1,
@@ -305,7 +321,8 @@ server <- function(input, output, session) {
      heat_data() %>%
        ggplot(aes(x = prior_theta, y = prior_sd)) + 
        geom_tile(aes(fill = p_hr)) + 
-       scale_fill_viridis_c(name = paste("Posterior Probabilty HR < ", hr_heat(), sep = ""),
+       scale_fill_viridis_c(name = paste("Posterior Probabilty ", short_lab(),
+                            paste(" < ", hr_heat(), sep = ""), sep = ""),
                             begin = min(heat_data()$p_hr),
                             end = max(heat_data()$p_hr)) + 
        labs(
@@ -357,7 +374,7 @@ server <- function(input, output, session) {
      tagList("One the 'heat map' tab, use the slider to select an outcome level of interest to visualize the posterior probability of the outcome falling below that level for various combinations of the prior's mean and SD.") 
    })
    output$heat_text <- renderUI({
-     tagList("Use the slider below to select a posterior HR of interest. The heat map will display the posterior probability of HR < your selected value for all combinations of the prior's mean and SD.") 
+     tagList("Use the slider below to select a posterior value of interest. The heat map will display the probability the posterior is below your selected value for all combinations of the prior's mean and SD.") 
    })
 
 }
