@@ -3,19 +3,26 @@
 
 library(shiny)
 library(tidyverse)
+library(shinyjs)
 
 ui <- bootstrapPage(
+  useShinyjs(),
   shinyUI(
     navbarPage("Bayesian Re-Analysis of Clinical Trials", 
                id = "tabs",
     tabPanel("Study Data",
              fluidPage(
                sidebarPanel(
+                 selectInput("est_type", 
+                             "Estimate Type",
+                             choices = c("HR", "OR"),
+                             selected = "HR"),
+                 hr(),
                  numericInput("pt_est",
                               "Treatment Effect Point Estimate",
                               value = 0.5),
                  numericInput("upper_ci",
-                              "Treatment Effect Upper Confidence Limit",
+                              "Upper Confidence Limit",
                               value = 0.9),
                  numericInput("ci_width",
                               "Confidence Interval Width",
@@ -23,10 +30,31 @@ ui <- bootstrapPage(
                               min = 0.9,
                               max = 1,
                               step = 0.01),
-                 selectInput("est_type",
-                             "Estimate Type",
-                             choices = c("HR", "OR", "RR"),
-                             selected = "HR")
+                 hr(),
+                 numericInput("or_a",
+                              "Events in Intervention Group",
+                              value = 10,
+                              min = 0,
+                              max = NA,
+                              step = 1),
+                 numericInput("or_b",
+                              "Events in Control Group",
+                              value = 0,
+                              min = 0,
+                              max = NA,
+                              step = 1),
+                 numericInput("trt_n",
+                              "Intervention Group Size",
+                              value = 50,
+                              min = 1,
+                              max = NA,
+                              step = 1),
+                 numericInput("ctrl_n",
+                              "Control Group Size",
+                              value = 50,
+                              min = 1,
+                              max = NA,
+                              step = 1)
                ),
                mainPanel(
                  h4("About this Application:"),
@@ -137,14 +165,38 @@ ui <- bootstrapPage(
 )
 
 server <- function(input, output, session) {
-   
+  
+  # Toggles
+  est_type <- reactive({input$est_type})
+  
+  observeEvent(input$est_type, {
+    
+    toggleState(id = "upper_ci", condition = est_type() == "HR")
+    toggleState(id = "pt_est", condition = est_type() == "HR")
+    toggleState(id = "ci_width", condition = est_type() == "HR")
+    
+    toggleState(id = "or_a", condition = est_type() == "OR")
+    toggleState(id = "or_b", condition = est_type() == "OR")
+    toggleState(id = "trt_n", condition = est_type() == "OR")
+    toggleState(id = "ctrl_n", condition = est_type() == "OR")
+    
+  }
+    
+  )
+
   # Publication Data
   pt_est <- reactive({input$pt_est})
   upper_ci <- reactive({input$upper_ci})
   ci_width <- reactive({input$ci_width})
   likelihood_p <- reactive({(1 - (1 - ci_width()) / 2)})
-  est_type <- reactive({input$est_type})
   
+  or_a <- reactive({input$or_a})
+  or_b <- reactive({input$or_b})
+  trt_n <- reactive({input$trt_n})
+  ctrl_n <- reactive({input$ctrl_n})
+  or_c <- reactive({trt_n() - or_a()})
+  or_d <- reactive({ctrl_n() - or_b()})
+ 
   # Calculate Priors
   theta_in <- reactive({input$theta})
   sd_in <- reactive({input$sd})
@@ -162,8 +214,6 @@ server <- function(input, output, session) {
       "Hazard Ratio"
     } else if (short_lab() == "OR"){
       "Odds Ratio"
-    } else {
-      "Relative Risk"
     }
   })
   
@@ -206,9 +256,30 @@ server <- function(input, output, session) {
   })
   
   # Calculate Likelihood Parameters
-  likelihood_theta <- reactive({log(pt_est())})
+  likelihood_theta <- reactive({
+    
+    if (est_type() == "HR") {
+      reactive({log(pt_est())})
+    } else if (est_type() == "OR") {
+      log(
+          ((or_a() + 0.5) * (or_d() * 0.5)) / 
+            ((or_b() + 0.5) * (or_c() * 0.5))
+        )
+      }
+  })
+  
   likelihood_sd <- reactive({
-    (log(upper_ci()) - log(pt_est())) / qnorm(likelihood_p())
+    
+    if (est_type() == "HR") {
+      (log(upper_ci()) - log(pt_est())) / qnorm(likelihood_p())
+    } else if (est_type() == "OR") {
+      sqrt(
+          ((1 / (or_a() + 0.5)) + 
+             (1 / (or_b() + 0.5)) + 
+             (1 / (or_c() + 0.5)) + 
+             (1 / (or_d() + 0.5)))
+        )
+    }
     })
   
   # Calculate Posterior Parameters
