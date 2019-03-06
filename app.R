@@ -259,7 +259,7 @@ server <- function(input, output, session) {
   likelihood_theta <- reactive({
     
     if (est_type() == "HR") {
-      reactive({log(pt_est())})
+      log(pt_est())
     } else if (est_type() == "OR") {
       log(
           ((or_a() + 0.5) * (or_d() * 0.5)) / 
@@ -310,6 +310,19 @@ server <- function(input, output, session) {
       
   })
   
+  # Max xlim
+  max_x <- reactive({
+    
+    # temp <- plot_data() %>%
+    #   filter(dist == "posterior",
+    #          y > 1.001) 
+    # 
+    # max(temp$x)
+    
+    likelihood_theta() + 3
+    
+  })
+  
   # Credible interval
   ci_in <- reactive({input$ci})
   
@@ -327,7 +340,7 @@ server <- function(input, output, session) {
        scale_color_brewer(name = NULL, type = "qual", palette = "Dark2",
                           breaks = c("prior", "likelihood", "posterior"),
                           labels = c("Prior", "Likelihood", "Posterior")) + 
-       xlim(0, 2) + 
+       xlim(0, max_x()) + 
        labs(
          x = long_lab(),
          y = "Probability Density"
@@ -337,14 +350,14 @@ server <- function(input, output, session) {
                               paste(" < 1: ", 
                               round(pnorm(log(1), post_theta(), post_sd(), 
                                           lower.tail = TRUE), 3), sep = ""), sep = ""),
-                x = 2, y = max(plot_data()$y), hjust = 1,
+                x = max_x(), y = max(plot_data()$y), hjust = 1,
                 fontface = "bold") + 
        annotate(geom = "text",
                 label = paste("Posterior probability ", short_lab(),
                               paste(" < ", hr_post(), sep = ""), 
                               paste(": ", round(pnorm(log(hr_post()), post_theta(), post_sd(),
                                                           lower.tail = TRUE), 3), sep = ""), sep = ""),
-                x = 2, y = max(plot_data()$y) - max(plot_data()$y/25), hjust = 1,
+                x = max_x(), y = max(plot_data()$y) - max(plot_data()$y/25), hjust = 1,
                 fontface = "bold") + 
        annotate(geom = "text",
                 label = paste("Posterior median (", ci_in(),
@@ -353,7 +366,7 @@ server <- function(input, output, session) {
                                     paste(" (", round(exp(qnorm((1 - (ci_in()/100)) / 2, post_theta(), post_sd())), 2), sep = ""),
                               paste(", ", round(exp(qnorm(1 - (1 - (ci_in()/100)) / 2, post_theta(), post_sd())), 2), sep = ""),
                               paste(")", sep = ""), sep = ""), sep = ""),
-                x = 2, y = max(plot_data()$y) - (2 * max(plot_data()$y)/25), hjust = 1,
+                x = max_x(), y = max(plot_data()$y) - (2 * max(plot_data()$y)/25), hjust = 1,
                 fontface = "bold") + 
        theme_classic() + 
        theme(
@@ -422,6 +435,8 @@ server <- function(input, output, session) {
                 href="https://twitter.com/BenYAndrew")
    url_dlt <- a("(@DanLane911)", 
                 href="https://twitter.com/DanLane911")
+   url_methods <- a("Wijeysundera et al.", 
+                    href="https://www.ncbi.nlm.nih.gov/pubmed/18947971")
    
     output$link_paper <- renderUI({
      tagList("Original paper: ", url_paper)
@@ -433,7 +448,7 @@ server <- function(input, output, session) {
      tagList("Questions & Improvements: ", url_email)
    })
    output$link_twitter <- renderUI({
-     tagList("This is an interactive tool for Bayesian re-analysis clinical trials. Code by Dan Lane", url_dlt, "and adapted by Ben Andrew", url_bat) 
+     tagList("This is an interactive tool for Bayesian re-analysis clinical trials. Code by Dan Lane", url_dlt, "and adapted by Ben Andrew", url_bat, "Methods adapted from", url_methods) 
    })
    output$step_1 <- renderUI({
      tagList("Enter basic results from the clinical trial on this page. This will allow for approximation of the likelihood distribution.") 
