@@ -85,16 +85,16 @@ ui <- bootstrapPage(
                sidebarPanel(
                  sliderInput("theta",
                              "Prior Mean:",
-                             min = 0.5,
-                             max = 1.25,
+                             min = 0.1,
+                             max = 2,
                              value = 1,
                              step = 0.01,
                              ticks = FALSE),
                  hr(),
                  sliderInput("hr",
                              "Value of interest for computing the width of the prior distribution (e.g., MCID):",
-                             min = 0.25,
-                             max = 1.25,
+                             min = 0.1,
+                             max = 2,
                              value = 0.5,
                              step = 0.01,
                              ticks = FALSE),
@@ -292,7 +292,7 @@ server <- function(input, output, session) {
     })
   
   # Plot data
-  x <- seq(-3, 3, by = 0.01)
+  x <- seq(-5, 3, by = 0.01)
   prior_plot <- reactive({dnorm(x, prior_theta(), prior_sd())})
   likelihood_plot <- reactive({dnorm(x, likelihood_theta(), likelihood_sd())})
   posterior_plot <- reactive({dnorm(x, post_theta(), post_sd())})
@@ -319,7 +319,7 @@ server <- function(input, output, session) {
     # 
     # max(temp$x)
     
-    likelihood_theta() + 3
+    max(likelihood_theta() + (exp(likelihood_theta()) * 1.5), 2)
     
   })
   
