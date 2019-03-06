@@ -313,12 +313,7 @@ server <- function(input, output, session) {
   # Max xlim
   max_x <- reactive({
     
-    # temp <- plot_data() %>%
-    #   filter(dist == "posterior",
-    #          y > 1.001) 
-    # 
-    # max(temp$x)
-    
+    # Ensure that at least up to 2 is shown
     max(likelihood_theta() + (exp(likelihood_theta()) * 1.5), 2)
     
   })
