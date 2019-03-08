@@ -25,6 +25,7 @@ ui <- bootstrapPage(
                                uiOutput("step_3"),
                                hr(),
                                uiOutput("link_email"),
+                               uiOutput("test"),
                                br(),
                                renderText(expr = output$paper_link)
                )
@@ -167,7 +168,7 @@ ui <- bootstrapPage(
                tags$style(HTML(".irs-max {font-family: 'arial'; color: black;}")),
                tags$style(HTML(".irs-min {font-family: 'arial'; color: black;}")),
                tags$style(HTML(".irs-single {color:white; background:black;}")), 
-               sidebarPanel(
+               sidebarPanel(width = 4,
                  sliderInput("theta",
                              "Prior Mean:",
                              min = 0.1,
@@ -213,12 +214,21 @@ ui <- bootstrapPage(
                              max = 1.25,
                              value = 0.9,
                              step = 0.01,
-                             ticks = FALSE)
+                             ticks = FALSE),
+                 hr(),
+                 checkboxGroupInput("dist_display", 
+                                    label = "Distribution Toggle:", 
+                                    choices = list("Prior" = 1, 
+                                                   "Likelihood" = 2, 
+                                                   "Posterior" = 3),
+                                    selected = c(1, 2, 3),
+                                    inline = TRUE)
                  
                  ),
                
                # Show a plot of the generated distributions
-               mainPanel(plotOutput("distPlot")
+               mainPanel(width = 8,
+                         plotOutput("distPlot")
                          )
                )
              ),
@@ -292,6 +302,18 @@ server <- function(input, output, session) {
     toggleState(id = "se_est", condition = se_avail() == 1)
     
   })
+  
+  # Curve Toggle Plot
+  dist_display <- reactive({input$dist_display})
+  
+  dist_list <-
+    reactive({
+      temp <- as.numeric(c(dist_display()[1],
+                   dist_display()[2],
+                   dist_display()[3]))
+      
+      c("prior", "likelihood", "posterior")[temp[!is.na(temp)]]
+    })
 
   # Publication Data
   pt_est <- reactive({input$pt_est})
@@ -514,12 +536,6 @@ server <- function(input, output, session) {
   })
   
   
-  
-  
-  
-  
-  
-  
   # Calculate Posterior Parameters
   post_theta <- reactive({
     ((prior_theta() / (prior_sd())^2)+(likelihood_theta() / likelihood_sd()^2)) / 
@@ -544,6 +560,9 @@ server <- function(input, output, session) {
         y = c(prior_plot(), likelihood_plot(), posterior_plot()),
         x = exp(x),
         y = exp(y)
+      ) %>%
+      filter(
+        dist %in% dist_list()
       )
       
   })
@@ -698,7 +717,6 @@ server <- function(input, output, session) {
    output$tech_notes <- renderUI({
      tagList("The standard error for the likelihood function was calculated using the equations 1 and 2 below. When enough data is supplied, equation 1 is preferrentially used. For you reference, all estimates are displayed below.") 
    })
-   
    
 }
 # Run the application 
