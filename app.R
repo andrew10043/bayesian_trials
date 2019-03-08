@@ -32,32 +32,33 @@ ui <- bootstrapPage(
              ))),
     tabPanel("Study Data",
              fluidPage(
-               sidebarPanel(width = 4,
-                 radioButtons("est_type",
-                              "What type of study is being analyzed?",
-                              choices = list("Time to Event (HR)" = 1, 
-                                             "Dichotomous Outcome (OR)" = 2),
-                              selected = 1),
-                 hr(),
-                 radioButtons("se_avail", 
-                              label = "Is the standard error of the point estimate available?",
-                              choices = list("Yes" = 1, "No" = 2), 
-                              inline = FALSE,
-                              selected = 2),
-                 conditionalPanel(
-                   condition = "input.est_type == 1",
-                 hr(),
-                 radioButtons("rates_avail", 
-                              label = "Are groupwise event rates available?",
-                              choices = list("Yes" = 1, "No" = 2), 
-                              inline = FALSE,
-                              selected = 2)
-                 )
-               ),
-               mainPanel(width = 8,
-                 fluidRow(
-                   column(6,
-                          conditionalPanel(
+               fluidRow(
+                 column(width = 4,
+                        h4("Study Details"),
+                        hr(),
+                   radioButtons("est_type",
+                                "What type of study is being analyzed?",
+                                choices = list("Time to Event (HR)" = 1, 
+                                               "Dichotomous Outcome (OR)" = 2),
+                                selected = 1),
+                   hr(),
+                   radioButtons("se_avail", 
+                                label = "Is the standard error of the point estimate available?",
+                                choices = list("Yes" = 1, "No" = 2), 
+                                inline = FALSE,
+                                selected = 2),
+                   conditionalPanel(
+                     condition = "input.est_type == 1",
+                   hr(),
+                   radioButtons("rates_avail", 
+                                label = "Are groupwise event rates available?",
+                                choices = list("Yes" = 1, "No" = 2), 
+                                inline = FALSE,
+                                selected = 2)
+                   )
+                 ),
+                 column(width = 4,
+                        conditionalPanel(
                             condition = "input.est_type == 1",
                           h4("Time to Event Data"),
                           hr(),
@@ -78,9 +79,6 @@ ui <- bootstrapPage(
                           numericInput("upper_ci",
                                        "Upper Confidence Limit",
                                        value = 0.9),
-                          numericInput("lower_ci",
-                                       "Lower Confidence Limit",
-                                       value = 0.4),
                           conditionalPanel(
                             condition = "input.rates_avail == 1",
                           numericInput("hr_a",
@@ -133,7 +131,7 @@ ui <- bootstrapPage(
                           ),
                           hr()
                    ),
-                   column(6,
+                 column(width = 4,
                           h4("Technical Notes"),
                           hr(),
                           uiOutput("tech_notes"),
@@ -145,17 +143,17 @@ ui <- bootstrapPage(
                           conditionalPanel(
                             condition = "input.est_type == 1",
                             uiOutput("eqn_1a"),
-                            uiOutput("eqn_2a")
+                            uiOutput("eqn_2a"),
+                            uiOutput("eqn_3a")
                           ),
                           conditionalPanel(
                             condition = "input.est_type == 2",
                             uiOutput("eqn_1b"),
-                            uiOutput("eqn_2b")
+                            uiOutput("eqn_2b"),
+                            uiOutput("eqn_3b")
                           ),
                           hr()
                           )
-                  
-                 )
                )
              )
              ),
@@ -319,7 +317,7 @@ server <- function(input, output, session) {
   pt_est <- reactive({input$pt_est})
   upper_ci <- reactive({input$upper_ci})
   ci_width <- reactive({input$ci_width})
-  likelihood_p <- reactive({(1 - (1 - ci_width()) / 2)})
+  likelihood_p <- reactive({(1 - ((1 - ci_width()) / 2))})
   
   hr_a <- reactive({input$hr_a})
   hr_b <- reactive({input$hr_b})
@@ -507,32 +505,40 @@ server <- function(input, output, session) {
   })
   
   output$lhsd_1 <- renderUI({
-    tagList("Equation 1 value: ", lhsd_1()) 
+    tagList("Equation 1 SE value: ", lhsd_1()) 
   })
   
   output$lhsd_2 <- renderUI({
-    tagList("Equation 2 value: ", lhsd_2()) 
+    tagList("Equation 2 SE value: ", lhsd_2()) 
   })
   
   output$lhsd_3 <- renderUI({
-    tagList("Reported value: ", lhsd_3())
+    tagList("Reported SE value: ", lhsd_3())
   })
 
   
   output$eqn_1a <- renderUI({
-    withMathJax(paste0("Equation 1:", "$$s = \\sqrt{\\frac{1}{E_1} + \\frac{1}{E_2}}$$"))
+    withMathJax(paste0("SE Equation 1:", "$$s = \\sqrt{\\frac{1}{E_1} + \\frac{1}{E_2}}$$"))
   })
   
   output$eqn_2a <- renderUI({
-    withMathJax(paste0("Equation 2:", "$$s = \\frac{log(UCI) - log(HR)}{qnorm(p)}$$"))
+    withMathJax(paste0("SE Equation 2:", "$$s = \\frac{log(UCI) - log(HR)}{qnorm(p)}$$"))
   })
   
   output$eqn_1b <- renderUI({
-    withMathJax(paste0("Equation 1:", "$$s = \\sqrt{\\frac{1}{a + \\frac{1}{2}} + \\frac{1}{b + \\frac{1}{2}} + \\frac{1}{c + \\frac{1}{2}} + \\frac{1}{d + \\frac{1}{2}}}$$"))
+    withMathJax(paste0("SE Equation 1:", "$$s = \\sqrt{\\frac{1}{a + \\frac{1}{2}} + \\frac{1}{b + \\frac{1}{2}} + \\frac{1}{c + \\frac{1}{2}} + \\frac{1}{d + \\frac{1}{2}}}$$"))
   })
   
   output$eqn_2b <- renderUI({
-    withMathJax(paste0("Equation 2:", "$$s = \\sqrt{\\frac{1}{a} + \\frac{1}{b} + \\frac{1}{c} + \\frac{1}{d}}$$"))
+    withMathJax(paste0("SE Equation 2:", "$$s = \\sqrt{\\frac{1}{a} + \\frac{1}{b} + \\frac{1}{c} + \\frac{1}{d}}$$"))
+  })
+  
+  output$eqn_3a <- renderUI({
+    withMathJax(paste0("Theta Equation:", "$$\\theta = log(HR)$$"))
+  })
+  
+  output$eqn_3b <- renderUI({
+    withMathJax(paste0("Theta Equation:", "$$\\theta = log\\frac{(a + \\frac{1}{2})(d + \\frac{1}{2})}{(b + \\frac{1}{2})(c + \\frac{1}{2})}$$"))
   })
   
   
@@ -715,7 +721,7 @@ server <- function(input, output, session) {
      tagList("Use the slider below to select a posterior value of interest. The heat map will display the probability the posterior is below your selected value for all combinations of the prior's mean and SD.") 
    })
    output$tech_notes <- renderUI({
-     tagList("The standard error for the likelihood function was calculated using the equations 1 and 2 below. When enough data is supplied, equation 1 is preferrentially used. For you reference, all estimates are displayed below.") 
+     tagList("The likelihood is constructed as a normal distribution with mean theta and standard deviation s, where s is the estimated standard error of the point estimate of interest. The standard error was estimated using equations 1 and 2 below. When enough data is supplied, equation 1 is preferrentially used. For reference purposes, all estimates are displayed below.") 
    })
    
 }
