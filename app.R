@@ -10,66 +10,129 @@ ui <- bootstrapPage(
   shinyUI(
     navbarPage("Bayesian Re-Analysis of Clinical Trials", 
                id = "tabs",
+    tabPanel("Home",
+             fluidPage(
+               fluidRow(column(12,
+                               h4("About this Application:"),
+                               uiOutput("link_twitter"),
+                               hr(),
+                               h5("Step 1:"),
+                               uiOutput("step_1"),
+                               h5("Step 2:"),
+                               uiOutput("step_2"),
+                               h5("Step 3:"),
+                               uiOutput("step_3"),
+                               hr(),
+                               uiOutput("link_email"),
+                               br(),
+                               renderText(expr = output$paper_link)
+               )
+             ))),
     tabPanel("Study Data",
              fluidPage(
-               sidebarPanel(
-                 selectInput("est_type", 
-                             "Estimate Type",
-                             choices = c("HR", "OR"),
-                             selected = "HR"),
+               sidebarPanel(width = 4,
+                 radioButtons("est_type",
+                              "What type of study is being analyzed?",
+                              choices = list("Time to Event (HR)" = 1, 
+                                             "Dichotomous Outcome (OR)" = 2),
+                              selected = 1),
                  hr(),
-                 numericInput("pt_est",
-                              "Treatment Effect Point Estimate",
-                              value = 0.5),
-                 numericInput("upper_ci",
-                              "Upper Confidence Limit",
-                              value = 0.9),
-                 numericInput("ci_width",
-                              "Confidence Interval Width",
-                              value = 0.95,
-                              min = 0.9,
-                              max = 1,
-                              step = 0.01),
+                 radioButtons("se_avail", 
+                              label = "Is the standard error of the point estimate available?",
+                              choices = list("Yes" = 1, "No" = 2), 
+                              inline = FALSE,
+                              selected = 2),
+                 conditionalPanel(
+                   condition = "input.est_type == 1",
                  hr(),
-                 numericInput("or_a",
-                              "Events in Intervention Group",
-                              value = 10,
-                              min = 0,
-                              max = NA,
-                              step = 1),
-                 numericInput("or_b",
-                              "Events in Control Group",
-                              value = 0,
-                              min = 0,
-                              max = NA,
-                              step = 1),
-                 numericInput("trt_n",
-                              "Intervention Group Size",
-                              value = 50,
-                              min = 1,
-                              max = NA,
-                              step = 1),
-                 numericInput("ctrl_n",
-                              "Control Group Size",
-                              value = 50,
-                              min = 1,
-                              max = NA,
-                              step = 1)
+                 radioButtons("rates_avail", 
+                              label = "Are groupwise event rates available?",
+                              choices = list("Yes" = 1, "No" = 2), 
+                              inline = FALSE,
+                              selected = 2)
+                 )
                ),
-               mainPanel(
-                 h4("About this Application:"),
-                 uiOutput("link_twitter"),
-                 hr(),
-                 h5("Step 1:"),
-                 uiOutput("step_1"),
-                 h5("Step 2:"),
-                 uiOutput("step_2"),
-                 h5("Step 3:"),
-                 uiOutput("step_3"),
-                 hr(),
-                 uiOutput("link_email"),
-                 br(),
-                 renderText(expr = output$paper_link)
+               mainPanel(width = 8,
+                 fluidRow(
+                   column(12,
+                          conditionalPanel(
+                            condition = "input.est_type == 1",
+                          h4("Time to Event Data"),
+                          hr(),
+                          numericInput("pt_est",
+                                       "HR Point Estimate",
+                                       value = 0.5),
+                          conditionalPanel(
+                            condition = "input.se_avail == 1",
+                            numericInput("se_hr",
+                                         "Standard Error of HR",
+                                         value = NA)),
+                          numericInput("ci_width",
+                                       "Confidence Interval Width",
+                                       value = 0.95,
+                                       min = 0.9,
+                                       max = 1,
+                                       step = 0.01),
+                          numericInput("upper_ci",
+                                       "Upper Confidence Limit",
+                                       value = 0.9),
+                          numericInput("lower_ci",
+                                       "Lower Confidence Limit",
+                                       value = 0.4),
+                          conditionalPanel(
+                            condition = "input.rates_avail == 1",
+                          numericInput("hr_a",
+                                       "Events in Intervention Group",
+                                       value = 10,
+                                       min = 0,
+                                       max = NA,
+                                       step = 1),
+                          numericInput("hr_b",
+                                       "Events in Control Group",
+                                       value = 0,
+                                       min = 0,
+                                       max = NA,
+                                       step = 1)
+                          )
+                          ),
+                          conditionalPanel(
+                            condition = "input.est_type == 2",
+                            h4("Dichotomous Outcome Data"),
+                            hr(),
+                            conditionalPanel(
+                              condition = "input.se_avail == 1",
+                              numericInput("se_or",
+                                           "Standard Error of OR",
+                                           value = NA)),
+                            numericInput("or_a",
+                                         "Events in Intervention Group",
+                                         value = 10,
+                                         min = 0,
+                                         max = NA,
+                                         step = 1),
+                            numericInput("or_b",
+                                         "Events in Control Group",
+                                         value = 0,
+                                         min = 0,
+                                         max = NA,
+                                         step = 1),
+                            numericInput("trt_n",
+                                         "Intervention Group Size",
+                                         value = 50,
+                                         min = 1,
+                                         max = NA,
+                                         step = 1),
+                            numericInput("ctrl_n",
+                                         "Control Group Size",
+                                         value = 50,
+                                         min = 1,
+                                         max = NA,
+                                         step = 1)
+                          ),
+                          hr()
+                   )
+                  
+                 )
                )
              )
              ),
@@ -168,27 +231,54 @@ server <- function(input, output, session) {
   
   # Toggles
   est_type <- reactive({input$est_type})
+  rates_avail <- reactive({input$rates_avail})
+  se_avail <- reactive({input$se_avail})
+
   
   observeEvent(input$est_type, {
     
-    toggleState(id = "upper_ci", condition = est_type() == "HR")
-    toggleState(id = "pt_est", condition = est_type() == "HR")
-    toggleState(id = "ci_width", condition = est_type() == "HR")
+    toggleState(id = "upper_ci", condition = est_type() == 1)
+    toggleState(id = "lower_ci", condition = est_type() == 1)
+    toggleState(id = "pt_est", condition = est_type() == 1)
+    toggleState(id = "ci_width", condition = est_type() == 1)
     
-    toggleState(id = "or_a", condition = est_type() == "OR")
-    toggleState(id = "or_b", condition = est_type() == "OR")
-    toggleState(id = "trt_n", condition = est_type() == "OR")
-    toggleState(id = "ctrl_n", condition = est_type() == "OR")
+    toggleState(id = "hr_a", condition = all(c(est_type() == 1,
+                                               rates_avail() == 1)))
+    toggleState(id = "hr_b", 
+                condition = all(c(est_type() == 1,
+                                  rates_avail() == 1)))
     
-  }
+    toggleState(id = "or_a", condition = est_type() == 2)
+    toggleState(id = "or_b", condition = est_type() == 2)
+    toggleState(id = "ctrl_n", condition = est_type() == 2)
+    toggleState(id = "trt_n", condition = est_type() == 2)
     
-  )
+  })
+  
+  observeEvent(input$rates_avail, {
+    
+    toggleState(id = "hr_a", condition = all(c(est_type() == 1,
+                                             rates_avail() == 1)))
+    toggleState(id = "hr_b", 
+              condition = all(c(est_type() == 1,
+                                rates_avail() == 1)))
+    
+  })
+  
+  observeEvent(input$se_avail, {
+    
+    toggleState(id = "se_est", condition = se_avail() == 1)
+    
+  })
 
   # Publication Data
   pt_est <- reactive({input$pt_est})
   upper_ci <- reactive({input$upper_ci})
   ci_width <- reactive({input$ci_width})
   likelihood_p <- reactive({(1 - (1 - ci_width()) / 2)})
+  
+  hr_a <- reactive({input$hr_a})
+  hr_b <- reactive({input$hr_b})
   
   or_a <- reactive({input$or_a})
   or_b <- reactive({input$or_b})
@@ -208,11 +298,17 @@ server <- function(input, output, session) {
   
   # Estimate Type Labels
   est_type <- reactive({input$est_type})
-  short_lab <- reactive({est_type()})
+  short_lab <- reactive({
+    if (est_type() == 1){
+      "HR"
+    } else if (est_type() == 2){
+      "OR"
+    }
+  })
   long_lab <- reactive({
-    if (short_lab() == "HR"){
+    if (est_type() == 1){
       "Hazard Ratio"
-    } else if (short_lab() == "OR"){
+    } else if (est_type() == 2){
       "Odds Ratio"
     }
   })
@@ -258,9 +354,9 @@ server <- function(input, output, session) {
   # Calculate Likelihood Parameters
   likelihood_theta <- reactive({
     
-    if (est_type() == "HR") {
+    if (est_type() == 1) {
       log(pt_est())
-    } else if (est_type() == "OR") {
+    } else if (est_type() == 2) {
       log(
           ((or_a() + 0.5) * (or_d() * 0.5)) / 
             ((or_b() + 0.5) * (or_c() * 0.5))
@@ -270,9 +366,19 @@ server <- function(input, output, session) {
   
   likelihood_sd <- reactive({
     
-    if (est_type() == "HR") {
-      (log(upper_ci()) - log(pt_est())) / qnorm(likelihood_p())
-    } else if (est_type() == "OR") {
+    if (est_type() == 1) {
+      
+      if (rates_avail() == 1){
+        
+        sqrt((1 / hr_a()) + (1 / hr_b()))
+        
+      } else {
+        
+        (log(upper_ci()) - log(pt_est())) / qnorm(likelihood_p())
+        
+      }
+      
+    } else if (est_type() == 2) {
       sqrt(
           ((1 / (or_a() + 0.5)) + 
              (1 / (or_b() + 0.5)) + 
@@ -281,6 +387,63 @@ server <- function(input, output, session) {
         )
     }
     })
+  
+  # Calculate alternative likelihood SE's for display
+  
+  lhsd_1 <- reactive({
+    
+    if (est_type() == 1) {
+      
+      if (rates_avail() == 1){
+        
+        sqrt((1 / hr_a()) + (1 / hr_b()))
+        
+      } else {
+        
+        NA
+        
+      }
+      
+    } else if (est_type() == 2) {
+      sqrt(
+        ((1 / (or_a() + 0.5)) + 
+           (1 / (or_b() + 0.5)) + 
+           (1 / (or_c() + 0.5)) + 
+           (1 / (or_d() + 0.5)))
+      )
+    }
+  })
+  
+  lhsd_2 <- reactive({
+    
+    if (est_type() == 1) {
+      
+      (log(upper_ci()) - log(pt_est())) / qnorm(likelihood_p())
+      
+    } else if (est_type() == 2) {
+      sqrt(
+        ((1 / (or_a())) + 
+           (1 / (or_b())) + 
+           (1 / (or_c())) + 
+           (1 / (or_d())))
+      )
+    }
+  })
+  
+  lhsd_3 <- reactive({
+    
+    if (se_avail() == 1) {
+      
+      se_avail()
+      
+    } else {
+      
+      NA
+      
+    }
+  })
+  
+  
   
   # Calculate Posterior Parameters
   post_theta <- reactive({
