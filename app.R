@@ -7,6 +7,7 @@ library(shinyjs)
 
 ui <- bootstrapPage(
   useShinyjs(),
+  withMathJax(),
   shinyUI(
     navbarPage("Bayesian Re-Analysis of Clinical Trials", 
                id = "tabs",
@@ -54,7 +55,7 @@ ui <- bootstrapPage(
                ),
                mainPanel(width = 8,
                  fluidRow(
-                   column(12,
+                   column(6,
                           conditionalPanel(
                             condition = "input.est_type == 1",
                           h4("Time to Event Data"),
@@ -89,7 +90,7 @@ ui <- bootstrapPage(
                                        step = 1),
                           numericInput("hr_b",
                                        "Events in Control Group",
-                                       value = 0,
+                                       value = 30,
                                        min = 0,
                                        max = NA,
                                        step = 1)
@@ -112,7 +113,7 @@ ui <- bootstrapPage(
                                          step = 1),
                             numericInput("or_b",
                                          "Events in Control Group",
-                                         value = 0,
+                                         value = 30,
                                          min = 0,
                                          max = NA,
                                          step = 1),
@@ -130,7 +131,28 @@ ui <- bootstrapPage(
                                          step = 1)
                           ),
                           hr()
-                   )
+                   ),
+                   column(6,
+                          h4("Technical Notes"),
+                          hr(),
+                          uiOutput("tech_notes"),
+                          br(),
+                          uiOutput("lhsd_3"),
+                          uiOutput("lhsd_1"),
+                          uiOutput("lhsd_2"),
+                          br(),
+                          conditionalPanel(
+                            condition = "input.est_type == 1",
+                            uiOutput("eqn_1a"),
+                            uiOutput("eqn_2a")
+                          ),
+                          conditionalPanel(
+                            condition = "input.est_type == 2",
+                            uiOutput("eqn_1b"),
+                            uiOutput("eqn_2b")
+                          ),
+                          hr()
+                          )
                   
                  )
                )
@@ -280,6 +302,9 @@ server <- function(input, output, session) {
   hr_a <- reactive({input$hr_a})
   hr_b <- reactive({input$hr_b})
   
+  se_hr <- reactive({input$se_hr})
+  se_or <- reactive({input$se_or})
+  
   or_a <- reactive({input$or_a})
   or_b <- reactive({input$or_b})
   trt_n <- reactive({input$trt_n})
@@ -396,7 +421,9 @@ server <- function(input, output, session) {
       
       if (rates_avail() == 1){
         
-        sqrt((1 / hr_a()) + (1 / hr_b()))
+        round(
+          sqrt((1 / hr_a()) + (1 / hr_b())),
+          3)
         
       } else {
         
@@ -405,28 +432,34 @@ server <- function(input, output, session) {
       }
       
     } else if (est_type() == 2) {
+      round(
       sqrt(
         ((1 / (or_a() + 0.5)) + 
            (1 / (or_b() + 0.5)) + 
            (1 / (or_c() + 0.5)) + 
            (1 / (or_d() + 0.5)))
-      )
+      ),
+      3)
     }
   })
   
   lhsd_2 <- reactive({
     
     if (est_type() == 1) {
-      
-      (log(upper_ci()) - log(pt_est())) / qnorm(likelihood_p())
+      round(
+        (log(upper_ci()) - log(pt_est())) / qnorm(likelihood_p()),
+        3)
       
     } else if (est_type() == 2) {
+      
+      round(
       sqrt(
         ((1 / (or_a())) + 
            (1 / (or_b())) + 
            (1 / (or_c())) + 
            (1 / (or_d())))
-      )
+      ),
+      3)
     }
   })
   
@@ -434,7 +467,15 @@ server <- function(input, output, session) {
     
     if (se_avail() == 1) {
       
-      se_avail()
+      if (est_type() == 1){
+        
+        round(se_hr(), 3)
+        
+      } else if (est_type() == 2){
+        
+        round(se_or(), 3)
+        
+      }
       
     } else {
       
@@ -442,6 +483,40 @@ server <- function(input, output, session) {
       
     }
   })
+  
+  output$lhsd_1 <- renderUI({
+    tagList("Equation 1 value: ", lhsd_1()) 
+  })
+  
+  output$lhsd_2 <- renderUI({
+    tagList("Equation 2 value: ", lhsd_2()) 
+  })
+  
+  output$lhsd_3 <- renderUI({
+    tagList("Reported value: ", lhsd_3())
+  })
+
+  
+  output$eqn_1a <- renderUI({
+    withMathJax(paste0("Equation 1:", "$$s = \\sqrt{\\frac{1}{E_1} + \\frac{1}{E_2}}$$"))
+  })
+  
+  output$eqn_2a <- renderUI({
+    withMathJax(paste0("Equation 2:", "$$s = \\frac{log(UCI) - log(HR)}{qnorm(p)}$$"))
+  })
+  
+  output$eqn_1b <- renderUI({
+    withMathJax(paste0("Equation 1:", "$$s = \\sqrt{\\frac{1}{a + \\frac{1}{2}} + \\frac{1}{b + \\frac{1}{2}} + \\frac{1}{c + \\frac{1}{2}} + \\frac{1}{d + \\frac{1}{2}}}$$"))
+  })
+  
+  output$eqn_2b <- renderUI({
+    withMathJax(paste0("Equation 2:", "$$s = \\sqrt{\\frac{1}{a} + \\frac{1}{b} + \\frac{1}{c} + \\frac{1}{d}}$$"))
+  })
+  
+  
+  
+  
+  
   
   
   
@@ -620,7 +695,11 @@ server <- function(input, output, session) {
    output$heat_text <- renderUI({
      tagList("Use the slider below to select a posterior value of interest. The heat map will display the probability the posterior is below your selected value for all combinations of the prior's mean and SD.") 
    })
-
+   output$tech_notes <- renderUI({
+     tagList("The standard error for the likelihood function was calculated using the equations 1 and 2 below. When enough data is supplied, equation 1 is preferrentially used. For you reference, all estimates are displayed below.") 
+   })
+   
+   
 }
 # Run the application 
 shinyApp(ui = ui, server = server)
