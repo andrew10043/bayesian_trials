@@ -721,7 +721,7 @@ server <- function(input, output, session) {
      tagList("Use the slider below to select a posterior value of interest. The heat map will display the probability the posterior is below your selected value for all combinations of the prior's mean and SD.") 
    })
    output$tech_notes <- renderUI({
-     tagList("The likelihood is constructed as a normal distribution with mean theta and standard deviation s, where s is the estimated standard error of the point estimate of interest. The standard error was estimated using equations 1 and 2 below. When enough data is supplied, equation 1 is preferrentially used. For reference purposes, all estimates are displayed below.") 
+     tagList("The likelihood is constructed as a normal distribution with mean theta and standard deviation s, where s is the estimated standard error of the point estimate of interest. The standard error was estimated using equations 1 and 2 below. When enough data is supplied, equation 1 is preferrentially used. For reference purposes, all estimates are displayed.") 
    })
    
 }
