@@ -4,6 +4,7 @@
 library(shiny)
 library(tidyverse)
 library(shinyjs)
+library(shinyWidgets)
 
 ui <- bootstrapPage(
   useShinyjs(),
@@ -36,13 +37,13 @@ ui <- bootstrapPage(
                  column(width = 4,
                         h4("Study Details"),
                         hr(),
-                   radioButtons("est_type",
+                        prettyRadioButtons("est_type",
                                 "What type of study is being analyzed?",
                                 choices = list("Time to Event (HR)" = 1, 
                                                "Dichotomous Outcome (OR)" = 2),
                                 selected = 1),
                    hr(),
-                   radioButtons("se_avail", 
+                   prettyRadioButtons("se_avail", 
                                 label = "Is the standard error of the point estimate available?",
                                 choices = list("Yes" = 1, "No" = 2), 
                                 inline = FALSE,
@@ -50,7 +51,7 @@ ui <- bootstrapPage(
                    conditionalPanel(
                      condition = "input.est_type == 1",
                    hr(),
-                   radioButtons("rates_avail", 
+                   prettyRadioButtons("rates_avail", 
                                 label = "Are groupwise event rates available?",
                                 choices = list("Yes" = 1, "No" = 2), 
                                 inline = FALSE,
@@ -134,7 +135,12 @@ ui <- bootstrapPage(
                  column(width = 4,
                           h4("Technical Notes"),
                           hr(),
-                          uiOutput("tech_notes"),
+                        conditionalPanel(
+                          condition = "input.est_type == 1",
+                          uiOutput("tech_notes_1")),
+                        conditionalPanel(
+                          condition = "input.est_type == 2",
+                          uiOutput("tech_notes_2")),
                           br(),
                           uiOutput("lhsd_3"),
                           uiOutput("lhsd_1"),
@@ -143,14 +149,12 @@ ui <- bootstrapPage(
                           conditionalPanel(
                             condition = "input.est_type == 1",
                             uiOutput("eqn_1a"),
-                            uiOutput("eqn_2a"),
-                            uiOutput("eqn_3a")
+                            uiOutput("eqn_2a")
                           ),
                           conditionalPanel(
                             condition = "input.est_type == 2",
                             uiOutput("eqn_1b"),
-                            uiOutput("eqn_2b"),
-                            uiOutput("eqn_3b")
+                            uiOutput("eqn_2b")
                           ),
                           hr()
                           )
@@ -174,7 +178,6 @@ ui <- bootstrapPage(
                              value = 1,
                              step = 0.01,
                              ticks = FALSE),
-                 hr(),
                  sliderInput("hr",
                              "Value of interest for computing the width of the prior distribution (e.g., MCID):",
                              min = 0.1,
@@ -189,7 +192,6 @@ ui <- bootstrapPage(
                              value = 0.05,
                              step = 0.01,
                              ticks = FALSE),
-                 hr(),
                  sliderInput("sd",
                              "Prior SD:",
                              min = 0.1,
@@ -197,7 +199,6 @@ ui <- bootstrapPage(
                              value = 0.42,
                              step = 0.01,
                              ticks = FALSE),
-                 hr(),
                  sliderInput("ci",
                              "Posterior Credible Interval: ",
                              value = 89,
@@ -212,15 +213,17 @@ ui <- bootstrapPage(
                              max = 1.25,
                              value = 0.9,
                              step = 0.01,
-                             ticks = FALSE),
-                 hr(),
-                 checkboxGroupInput("dist_display", 
-                                    label = "Distribution Toggle:", 
-                                    choices = list("Prior" = 1, 
-                                                   "Likelihood" = 2, 
-                                                   "Posterior" = 3),
-                                    selected = c(1, 2, 3),
-                                    inline = TRUE)
+                             ticks = FALSE)
+                 # prettyCheckboxGroup("dist_display", 
+                 #                    label = "Distribution Toggle:", 
+                 #                    choices = list("Prior" = 1, 
+                 #                                   "Likelihood" = 2, 
+                 #                                   "Posterior" = 3),
+                 #                    selected = c(1, 2, 3),
+                 #                    inline = TRUE,
+                 #                    fill = FALSE,
+                 #                    outline = FALSE,
+                 #                    status = "primary")
                  
                  ),
                
@@ -532,15 +535,7 @@ server <- function(input, output, session) {
   output$eqn_2b <- renderUI({
     withMathJax(paste0("SE Equation 2:", "$$s = \\sqrt{\\frac{1}{a} + \\frac{1}{b} + \\frac{1}{c} + \\frac{1}{d}}$$"))
   })
-  
-  output$eqn_3a <- renderUI({
-    withMathJax(paste0("Theta Equation:", "$$\\theta = log(HR)$$"))
-  })
-  
-  output$eqn_3b <- renderUI({
-    withMathJax(paste0("Theta Equation:", "$$\\theta = log\\frac{(a + \\frac{1}{2})(d + \\frac{1}{2})}{(b + \\frac{1}{2})(c + \\frac{1}{2})}$$"))
-  })
-  
+
   
   # Calculate Posterior Parameters
   post_theta <- reactive({
@@ -565,11 +560,11 @@ server <- function(input, output, session) {
         dist = rep(c("prior", "likelihood", "posterior"), each = nrow(.) / 3),
         y = c(prior_plot(), likelihood_plot(), posterior_plot()),
         x = exp(x),
-        y = exp(y)
-      ) %>%
-      filter(
-        dist %in% dist_list()
-      )
+        y = exp(y))
+      # %>%
+      # filter(
+      #   dist %in% dist_list()
+      # )
       
   })
   
@@ -596,7 +591,7 @@ server <- function(input, output, session) {
        geom_line(aes(color = dist),
                  size = 1.1) + 
        scale_color_brewer(name = NULL, type = "qual", palette = "Dark2",
-                          breaks = c("prior", "likelihood", "posterior"),
+                          breaks = c("likelihood", "prior", "posterior"),
                           labels = c("Prior", "Likelihood", "Posterior")) + 
        xlim(0, max_x()) + 
        labs(
@@ -709,7 +704,7 @@ server <- function(input, output, session) {
      tagList("This is an interactive tool for Bayesian re-analysis clinical trials. Code by Dan Lane", url_dlt, "and adapted by Ben Andrew", url_bat, "Methods adapted from", url_methods) 
    })
    output$step_1 <- renderUI({
-     tagList("Enter basic results from the clinical trial on this page. This will allow for approximation of the likelihood distribution.") 
+     tagList("Enter basic results from the clinical trial on the Study Data tab. This will allow for approximation of the likelihood distribution.") 
    })
    output$step_2 <- renderUI({
      tagList("On the 'distributions' tab use the sliders to dynamically adjust the prior distribution by selecting the mean and either (1) the SD or (2) an outcome level of interest and the desired probability mass of the prior below that level.") 
@@ -720,8 +715,19 @@ server <- function(input, output, session) {
    output$heat_text <- renderUI({
      tagList("Use the slider below to select a posterior value of interest. The heat map will display the probability the posterior is below your selected value for all combinations of the prior's mean and SD.") 
    })
-   output$tech_notes <- renderUI({
-     tagList("The likelihood is constructed as a normal distribution with mean theta and standard deviation s, where s is the estimated standard error of the point estimate of interest. The standard error was estimated using equations 1 and 2 below. When enough data is supplied, equation 1 is preferrentially used. For reference purposes, all estimates are displayed.") 
+   output$tech_notes_1 <- renderUI({
+     withMathJax(paste0("The likelihood is constructed as a normal distribution: ",
+                        "$$L \\sim N(\\theta, s)$$",
+                        "where",
+                        "$$\\theta = log(HR)$$",
+                        "and s is the estimated standard error of the point estimate of interest. The standard error is estimated using equations 1 and 2 below. When enough data is supplied, equation 1 is preferentially used. For reference purposes, all estimates are displayed.")) 
+   })
+   output$tech_notes_2 <- renderUI({
+     withMathJax(paste0("The likelihood is constructed as a normal distribution: ",
+                        "$$L \\sim N(\\theta, s)$$",
+                        "where",
+                        "$$\\theta = log\\frac{(a + \\frac{1}{2})(d + \\frac{1}{2})}{(b + \\frac{1}{2})(c + \\frac{1}{2})}$$",
+                        "and s is the estimated standard error of the point estimate of interest. The standard error is estimated using equations 1 and 2 below. When enough data is supplied, equation 1 is preferrentially used. For reference purposes, all estimates are displayed.")) 
    })
    
 }
