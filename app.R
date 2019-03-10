@@ -40,7 +40,8 @@ ui <- bootstrapPage(
                         prettyRadioButtons("est_type",
                                 "What type of study is being analyzed?",
                                 choices = list("Time to Event (HR)" = 1, 
-                                               "Dichotomous Outcome (OR)" = 2),
+                                               "Dichotomous Outcome (OR)" = 2,
+                                               "Dichotomous Outcome (RR)" = 3),
                                 selected = 1),
                    hr(),
                    prettyRadioButtons("se_avail", 
@@ -97,8 +98,13 @@ ui <- bootstrapPage(
                           )
                           ),
                           conditionalPanel(
-                            condition = "input.est_type == 2",
-                            h4("Dichotomous Outcome Data"),
+                            condition = "input.est_type != 1",
+                            conditionalPanel(
+                              condition = "input.est_type == 2",
+                            h4("Dichotomous Outcome Data (OR)")),
+                            conditionalPanel(
+                              condition = "input.est_type == 3",
+                              h4("Dichotomous Outcome Data (RR)")),
                             hr(),
                             conditionalPanel(
                               condition = "input.se_avail == 1",
@@ -141,10 +147,15 @@ ui <- bootstrapPage(
                         conditionalPanel(
                           condition = "input.est_type == 2",
                           uiOutput("tech_notes_2")),
+                        conditionalPanel(
+                          condition = "input.est_type == 3",
+                          uiOutput("tech_notes_3")),
                           br(),
                           uiOutput("lhsd_3"),
                           uiOutput("lhsd_1"),
-                          uiOutput("lhsd_2"),
+                        conditionalPanel(
+                          condition = "input.est_type != 3",
+                          uiOutput("lhsd_2")),
                           br(),
                           conditionalPanel(
                             condition = "input.est_type == 1",
@@ -156,6 +167,10 @@ ui <- bootstrapPage(
                             uiOutput("eqn_1b"),
                             uiOutput("eqn_2b")
                           ),
+                        conditionalPanel(
+                          condition = "input.est_type == 3",
+                          uiOutput("eqn_1c")
+                        ),
                           hr()
                           )
                )
@@ -281,10 +296,10 @@ server <- function(input, output, session) {
                 condition = all(c(est_type() == 1,
                                   rates_avail() == 1)))
     
-    toggleState(id = "or_a", condition = est_type() == 2)
-    toggleState(id = "or_b", condition = est_type() == 2)
-    toggleState(id = "ctrl_n", condition = est_type() == 2)
-    toggleState(id = "trt_n", condition = est_type() == 2)
+    toggleState(id = "or_a", condition = est_type() %in% c(2, 3))
+    toggleState(id = "or_b", condition = est_type() %in% c(2, 3))
+    toggleState(id = "ctrl_n", condition = est_type() %in% c(2, 3))
+    toggleState(id = "trt_n", condition = est_type() %in% c(2, 3))
     
   })
   
@@ -305,16 +320,16 @@ server <- function(input, output, session) {
   })
   
   # Curve Toggle Plot
-  dist_display <- reactive({input$dist_display})
-  
-  dist_list <-
-    reactive({
-      temp <- as.numeric(c(dist_display()[1],
-                   dist_display()[2],
-                   dist_display()[3]))
-      
-      c("prior", "likelihood", "posterior")[temp[!is.na(temp)]]
-    })
+  # dist_display <- reactive({input$dist_display})
+  # 
+  # dist_list <-
+  #   reactive({
+  #     temp <- as.numeric(c(dist_display()[1],
+  #                  dist_display()[2],
+  #                  dist_display()[3]))
+  #     
+  #     c("prior", "likelihood", "posterior")[temp[!is.na(temp)]]
+  #   })
 
   # Publication Data
   pt_est <- reactive({input$pt_est})
@@ -351,6 +366,8 @@ server <- function(input, output, session) {
       "HR"
     } else if (est_type() == 2){
       "OR"
+    } else if (est_type() == 3){
+      "RR"
     }
   })
   long_lab <- reactive({
@@ -358,6 +375,8 @@ server <- function(input, output, session) {
       "Hazard Ratio"
     } else if (est_type() == 2){
       "Odds Ratio"
+    } else if (est_type() == 3){
+      "Risk Ratio"
     }
   })
   
@@ -406,9 +425,15 @@ server <- function(input, output, session) {
       log(pt_est())
     } else if (est_type() == 2) {
       log(
-          ((or_a() + 0.5) * (or_d() * 0.5)) / 
-            ((or_b() + 0.5) * (or_c() * 0.5))
+          ((or_a() + 0.5) * (or_d() + 0.5)) / 
+            ((or_b() + 0.5) * (or_c() + 0.5))
         )
+    } else if (est_type() == 3){
+      log(
+        (or_a() / (or_a() + or_c())) / 
+          (or_b() / (or_b() + or_d()))
+      )
+      
       }
   })
   
@@ -433,6 +458,11 @@ server <- function(input, output, session) {
              (1 / (or_c() + 0.5)) + 
              (1 / (or_d() + 0.5)))
         )
+    } else if (est_type() == 3) {
+      sqrt(
+        (or_c() / (or_a() * (or_a() + or_c()))) + 
+          (or_d() / (or_b() * (or_b() + or_d())))  
+      )
     }
     })
   
@@ -463,6 +493,14 @@ server <- function(input, output, session) {
            (1 / (or_d() + 0.5)))
       ),
       3)
+    } else if (est_type() == 3) {
+      round(
+        sqrt(
+          (or_c() / or_a() * (or_a() + or_c())) + 
+          (or_d() / or_b() * (or_b() + or_d()))  
+          ),
+        3
+      )
     }
   })
   
@@ -483,6 +521,10 @@ server <- function(input, output, session) {
            (1 / (or_d())))
       ),
       3)
+    } else if (est_type() == 3) {
+      
+      NA # No secondary option for RR for the time-being
+      
     }
   })
   
@@ -497,6 +539,10 @@ server <- function(input, output, session) {
       } else if (est_type() == 2){
         
         round(se_or(), 3)
+        
+      } else if (est_type() == 3){
+        
+        round(se_or(), 3) # Same input used for SE OR/RR
         
       }
       
@@ -534,6 +580,10 @@ server <- function(input, output, session) {
   
   output$eqn_2b <- renderUI({
     withMathJax(paste0("SE Equation 2:", "$$s = \\sqrt{\\frac{1}{a} + \\frac{1}{b} + \\frac{1}{c} + \\frac{1}{d}}$$"))
+  })
+  
+  output$eqn_1c <- renderUI({
+    withMathJax(paste0("SE Equation 1:", "$$s = \\sqrt{\\frac{c}{a(a + c)} + \\frac{d}{b(b + d)}}$$"))
   })
 
   
@@ -729,7 +779,13 @@ server <- function(input, output, session) {
                         "$$\\theta = log\\frac{(a + \\frac{1}{2})(d + \\frac{1}{2})}{(b + \\frac{1}{2})(c + \\frac{1}{2})}$$",
                         "and s is the estimated standard error of the point estimate of interest. The standard error is estimated using equations 1 and 2 below. When enough data is supplied, equation 1 is preferrentially used. For reference purposes, all estimates are displayed.")) 
    })
-   
+   output$tech_notes_3 <- renderUI({
+     withMathJax(paste0("The likelihood is constructed as a normal distribution: ",
+                        "$$L \\sim N(\\theta, s)$$",
+                        "where",
+                        "$$\\theta = log\\frac{\\frac{a}{a + c}}{\\frac{b}{b + d}}$$",
+                        "and s is the estimated standard error of the point estimate of interest. The standard error is estimated using equation 1 below. For reference purposes, the reported SE (if available) and estimated SE are both displayed.")) 
+   })
 }
 # Run the application 
 shinyApp(ui = ui, server = server)
