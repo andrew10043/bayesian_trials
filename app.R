@@ -258,12 +258,37 @@ ui <- bootstrapPage(
 
 server <- function(input, output, session) {
   
-  # Toggles
+  # Reactive values
   est_type <- reactive({input$est_type})
   rates_avail <- reactive({input$rates_avail})
   se_avail <- reactive({input$se_avail})
-
   
+  pt_est <- reactive({input$pt_est})
+  upper_ci <- reactive({input$upper_ci})
+  ci_width <- reactive({input$ci_width})
+  likelihood_p <- reactive({(1 - ((1 - ci_width()) / 2))})
+  
+  hr_a <- reactive({input$hr_a})
+  hr_b <- reactive({input$hr_b})
+  
+  se_hr <- reactive({input$se_hr})
+  se_or <- reactive({input$se_or})
+  
+  or_a <- reactive({input$or_a})
+  or_b <- reactive({input$or_b})
+  trt_n <- reactive({input$trt_n})
+  ctrl_n <- reactive({input$ctrl_n})
+  or_c <- reactive({trt_n() - or_a()})
+  or_d <- reactive({ctrl_n() - or_b()})
+  
+  theta_in <- reactive({input$theta})
+  sd_in <- reactive({input$sd})
+  hr_in <- reactive({input$hr})
+  pr_in <- reactive({input$pr})
+  
+  prior_theta <- reactive({log(theta_in())})
+  prior_sd <- reactive({sd_in()})
+
   observeEvent(input$est_type, {
     
     toggleState(id = "upper_ci", condition = est_type() == 1)
@@ -299,46 +324,6 @@ server <- function(input, output, session) {
     toggleState(id = "se_est", condition = se_avail() == 1)
     
   })
-  
-  # Curve Toggle Plot
-  # dist_display <- reactive({input$dist_display})
-  # 
-  # dist_list <-
-  #   reactive({
-  #     temp <- as.numeric(c(dist_display()[1],
-  #                  dist_display()[2],
-  #                  dist_display()[3]))
-  #     
-  #     c("prior", "likelihood", "posterior")[temp[!is.na(temp)]]
-  #   })
-
-  # Publication Data
-  pt_est <- reactive({input$pt_est})
-  upper_ci <- reactive({input$upper_ci})
-  ci_width <- reactive({input$ci_width})
-  likelihood_p <- reactive({(1 - ((1 - ci_width()) / 2))})
-  
-  hr_a <- reactive({input$hr_a})
-  hr_b <- reactive({input$hr_b})
-  
-  se_hr <- reactive({input$se_hr})
-  se_or <- reactive({input$se_or})
-  
-  or_a <- reactive({input$or_a})
-  or_b <- reactive({input$or_b})
-  trt_n <- reactive({input$trt_n})
-  ctrl_n <- reactive({input$ctrl_n})
-  or_c <- reactive({trt_n() - or_a()})
-  or_d <- reactive({ctrl_n() - or_b()})
- 
-  # Calculate Priors
-  theta_in <- reactive({input$theta})
-  sd_in <- reactive({input$sd})
-  hr_in <- reactive({input$hr})
-  pr_in <- reactive({input$pr})
-  
-  prior_theta <- reactive({log(theta_in())})
-  prior_sd <- reactive({sd_in()})
   
   # Estimate Type Labels
   est_type <- reactive({input$est_type})
