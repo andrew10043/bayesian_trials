@@ -5,6 +5,7 @@ library(shiny)
 library(tidyverse)
 library(shinyjs)
 library(shinyWidgets)
+library(RColorBrewer)
 
 ui <- bootstrapPage(
   useShinyjs(),
@@ -228,7 +229,16 @@ ui <- bootstrapPage(
                              max = 1.25,
                              value = 0.9,
                              step = 0.01,
-                             ticks = FALSE)
+                             ticks = FALSE),
+                 prettyRadioButtons("post_alpha",
+                                    label = "Show Posterior Area of Interest?",
+                                    choices = list("Yes" = 1,
+                                                   "No" = 0),
+                                    selected = 0,
+                                    inline = TRUE,
+                                    fill = FALSE,
+                                    outline = FALSE,
+                                    status = "primary")
                  # prettyCheckboxGroup("dist_display", 
                  #                    label = "Distribution Toggle:", 
                  #                    choices = list("Prior" = 1, 
@@ -597,7 +607,7 @@ server <- function(input, output, session) {
     })
   
   # Plot data
-  x <- seq(-5, 3, by = 0.01)
+  x <- seq(-5, 3, by = 0.005)
   prior_plot <- reactive({dnorm(x, prior_theta(), prior_sd())})
   likelihood_plot <- reactive({dnorm(x, likelihood_theta(), likelihood_sd())})
   posterior_plot <- reactive({dnorm(x, post_theta(), post_sd())})
@@ -632,14 +642,32 @@ server <- function(input, output, session) {
   # HR Post
   hr_post <- reactive({input$hr_post})
   
+  # Colors
+  like_col <- brewer.pal(3, "Dark2")[1]
+  post_col <- brewer.pal(3, "Dark2")[2]
+  prior_col <- brewer.pal(3, "Dark2")[3]
+  
+  # Posterior alpha (toggle)
+  post_alpha <- reactive({as.numeric(input$post_alpha)})
+  
   # Dynamic Plot
    output$distPlot <- renderPlot({
      plot_data() %>%
        ggplot(aes(x = x, y = y, group = dist)) + 
        geom_vline(xintercept = 1, linetype = "dashed",
-                  color = "grey50", alpha = 0.75) + 
+                  color = "grey50", alpha = 0.75,
+                  size = 0.75) + 
        geom_line(aes(color = dist),
                  size = 1.1) + 
+       geom_ribbon(data = plot_data() %>%
+                     filter(dist == "posterior",
+                            x < hr_post()),
+                   aes(ymin = 1, ymax = y, x = x),
+                   alpha = post_alpha() * 0.5, fill = post_col) + 
+       geom_vline(xintercept = hr_post(),
+                  color = post_col,
+                  size = 0.75, linetype = "dashed", 
+                  alpha = post_alpha() * 0.75) + 
        scale_color_brewer(name = NULL, type = "qual", palette = "Dark2",
                           breaks = c("likelihood", "prior", "posterior"),
                           labels = c("Prior", "Likelihood", "Posterior")) + 
