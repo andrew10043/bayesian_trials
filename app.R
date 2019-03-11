@@ -770,21 +770,24 @@ server <- function(input, output, session) {
                         "$$L \\sim N(\\theta, s)$$",
                         "where",
                         "$$\\theta = log(HR)$$",
-                        "and s is the estimated standard error of the log point estimate of interest. The standard error is estimated using equations 1 and 2 below. When enough data is supplied, equation 1 is preferentially used. For reference purposes, all estimates are displayed.")) 
+                        "$$s = \\widehat{SE}_{log(HR)}$$",
+                        "SE is estimated using equations 1 and 2 below. When enough data is supplied, equation 1 is preferentially used. For reference purposes, all estimates are displayed.")) 
    })
    output$tech_notes_2 <- renderUI({
      withMathJax(paste0("The likelihood is constructed as a normal distribution: ",
                         "$$L \\sim N(\\theta, s)$$",
                         "where",
                         "$$\\theta = log\\frac{(a + \\frac{1}{2})(d + \\frac{1}{2})}{(b + \\frac{1}{2})(c + \\frac{1}{2})}$$",
-                        "and s is the estimated standard error of the log point estimate of interest. The standard error is estimated using equations 1 and 2 below. When enough data is supplied, equation 1 is preferrentially used. For reference purposes, all estimates are displayed.")) 
+                        "$$s = \\widehat{SE}_{log(OR)}$$",
+                        "SE is estimated using equations 1 and 2 below. When enough data is supplied, equation 1 is preferrentially used. For reference purposes, all estimates are displayed.")) 
    })
    output$tech_notes_3 <- renderUI({
      withMathJax(paste0("The likelihood is constructed as a normal distribution: ",
                         "$$L \\sim N(\\theta, s)$$",
                         "where",
                         "$$\\theta = log\\frac{\\frac{a}{a + c}}{\\frac{b}{b + d}}$$",
-                        "and s is the estimated standard error of the log point estimate of interest. The standard error is estimated using equation 1 below. For reference purposes, the reported SE (if available) and estimated SE are both displayed.")) 
+                        "$$s = \\widehat{SE}_{log(RR)}$$",
+                        "SE is estimated using equation 1 below. For reference purposes, the reported SE (if available) and estimated SE are both displayed.")) 
    })
 }
 # Run the application 
