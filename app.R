@@ -6,7 +6,6 @@ library(tidyverse)
 library(shinyjs)
 library(shinyWidgets)
 library(RColorBrewer)
-library(tidybayes)
 
 ui <- bootstrapPage(
   useShinyjs(),
@@ -14,26 +13,26 @@ ui <- bootstrapPage(
   shinyUI(
     navbarPage("Bayesian Re-Analysis of Clinical Trials", 
                id = "tabs",
-    tabPanel("Home",
+    tabPanel(title = "Home",
              fluidPage(
-               fluidRow(column(12,
-                               h4("About this Application:"),
-                               uiOutput("link_twitter"),
-                               hr(),
-                               h5("Step 1:"),
-                               uiOutput("step_1"),
-                               h5("Step 2:"),
-                               uiOutput("step_2"),
-                               h5("Step 3:"),
-                               uiOutput("step_3"),
-                               hr(),
-                               uiOutput("link_email"),
-                               uiOutput("test"),
-                               br(),
-                               renderText(expr = output$paper_link)
-               )
-             ))),
-    tabPanel("Study Data",
+               fluidRow(
+                 column(width = 12,
+                        h4("About this Application:"),
+                           uiOutput("link_twitter"),
+                           hr(),
+                           h5("Step 1:"),
+                           uiOutput("step_1"),
+                           h5("Step 2:"),
+                           uiOutput("step_2"),
+                           h5("Step 3:"),
+                           uiOutput("step_3"),
+                           hr(),
+                           uiOutput("link_email"),
+                           uiOutput("test"),
+                           br(),
+                           renderText(expr = output$paper_link)
+                        )))),
+    tabPanel(title = "Study Data",
              fluidPage(
                fluidRow(
                  column(width = 4,
@@ -45,22 +44,20 @@ ui <- bootstrapPage(
                                                "Dichotomous Outcome (OR)" = 2,
                                                "Dichotomous Outcome (RR)" = 3),
                                 selected = 1),
-                   hr(),
-                   prettyRadioButtons("se_avail", 
-                                label = "Is the standard error of the point estimate available?",
-                                choices = list("Yes" = 1, "No" = 2), 
-                                inline = FALSE,
-                                selected = 2),
-                   conditionalPanel(
-                     condition = "input.est_type == 1",
-                   hr(),
-                   prettyRadioButtons("rates_avail", 
-                                label = "Are groupwise event rates available?",
-                                choices = list("Yes" = 1, "No" = 2), 
-                                inline = FALSE,
-                                selected = 2)
-                   )
-                 ),
+                        hr(),
+                        prettyRadioButtons("se_avail", 
+                                           label = "Is the standard error of the point estimate available?",
+                                           choices = list("Yes" = 1, "No" = 2), 
+                                           inline = FALSE,
+                                           selected = 2),
+                        conditionalPanel(
+                          condition = "input.est_type == 1",
+                          hr(),
+                          prettyRadioButtons("rates_avail", 
+                                             label = "Are groupwise event rates available?",
+                                             choices = list("Yes" = 1, "No" = 2), 
+                                             inline = FALSE,
+                                             selected = 2))),
                  column(width = 4,
                         conditionalPanel(
                             condition = "input.est_type == 1",
@@ -96,9 +93,7 @@ ui <- bootstrapPage(
                                        value = 30,
                                        min = 0,
                                        max = NA,
-                                       step = 1)
-                          )
-                          ),
+                                       step = 1))),
                           conditionalPanel(
                             condition = "input.est_type != 1",
                             conditionalPanel(
@@ -136,10 +131,8 @@ ui <- bootstrapPage(
                                          value = 50,
                                          min = 1,
                                          max = NA,
-                                         step = 1)
-                          ),
-                          hr()
-                   ),
+                                         step = 1)),
+                        hr()),
                  column(width = 4,
                           h4("Technical Notes"),
                           hr(),
@@ -162,23 +155,16 @@ ui <- bootstrapPage(
                           conditionalPanel(
                             condition = "input.est_type == 1",
                             uiOutput("eqn_1a"),
-                            uiOutput("eqn_2a")
-                          ),
+                            uiOutput("eqn_2a")),
                           conditionalPanel(
                             condition = "input.est_type == 2",
                             uiOutput("eqn_1b"),
-                            uiOutput("eqn_2b")
-                          ),
+                            uiOutput("eqn_2b")),
                         conditionalPanel(
                           condition = "input.est_type == 3",
-                          uiOutput("eqn_1c")
-                        ),
-                          hr()
-                          )
-               )
-             )
-             ),
-    tabPanel("Distributions",
+                          uiOutput("eqn_1c")),
+                          hr())))),
+    tabPanel(title = "Distributions",
              fluidPage(
                tags$style(HTML(".irs-bar {width: 100%; height: 5px; background: black; border-top: 1px solid black; border-bottom: 1px solid black;}")),
                tags$style(HTML(".irs-bar-edge {background: black; border: 1px solid black; height: 5px; border-radius: 15px 15px 15px 15px;}")),
@@ -188,50 +174,50 @@ ui <- bootstrapPage(
                tags$style(HTML(".irs-min {font-family: 'arial'; color: black;}")),
                tags$style(HTML(".irs-single {color:white; background:black;}")), 
                sidebarPanel(width = 4,
-                 sliderInput("theta",
-                             "Prior Mean:",
+                 sliderInput(inputId = "theta",
+                             label = "Prior Mean:",
                              min = 0.1,
                              max = 2,
                              value = 1,
                              step = 0.01,
                              ticks = FALSE),
-                 sliderInput("hr",
-                             "Value of interest for computing the width of the prior distribution (e.g., MCID):",
+                 sliderInput(inputId = "hr",
+                             label = "Value of interest for computing the width of the prior distribution (e.g., MCID):",
                              min = 0.1,
                              max = 2,
                              value = 0.5,
                              step = 0.01,
                              ticks = FALSE),
-                 sliderInput("pr",
-                             "Probability that the prior is less than this value:",
+                 sliderInput(inputId = "pr",
+                             label = "Probability that the prior is less than this value:",
                              min = 0,
                              max = 1,
                              value = 0.05,
                              step = 0.01,
                              ticks = FALSE),
-                 sliderInput("sd",
-                             "Prior SD:",
+                 sliderInput(inputId = "sd",
+                             label = "Prior SD:",
                              min = 0.1,
                              max = 1,
                              value = 0.42,
                              step = 0.01,
                              ticks = FALSE),
-                 sliderInput("ci",
-                             "Posterior Credible Interval: ",
+                 sliderInput(inputId = "ci",
+                             label = "Posterior Credible Interval: ",
                              value = 89,
                              min = 60,
                              max = 99,
                              step = 1,
                              post = "%",
                              ticks = FALSE),
-                 sliderInput("hr_post",
-                             "Posterior Value of Interest: ",
+                 sliderInput(inputId = "hr_post",
+                             label = "Posterior Value of Interest: ",
                              min = 0.5,
                              max = 1.25,
                              value = 0.9,
                              step = 0.01,
                              ticks = FALSE),
-                 prettyRadioButtons("post_alpha",
+                 prettyRadioButtons(inputId = "post_alpha",
                                     label = "Show Posterior Area of Interest?",
                                     choices = list("Yes" = 1,
                                                    "No" = 0),
@@ -240,7 +226,7 @@ ui <- bootstrapPage(
                                     fill = FALSE,
                                     outline = FALSE,
                                     status = "primary"),
-                 prettyRadioButtons("cred_alpha",
+                 prettyRadioButtons(inputId = "cred_alpha",
                                     label = "Show Posterior Credible Interval?",
                                     choices = list("Yes" = 1,
                                                    "No" = 0),
@@ -248,28 +234,10 @@ ui <- bootstrapPage(
                                     inline = TRUE,
                                     fill = FALSE,
                                     outline = FALSE,
-                                    status = "primary")
-                 # prettyCheckboxGroup("dist_display", 
-                 #                    label = "Distribution Toggle:", 
-                 #                    choices = list("Prior" = 1, 
-                 #                                   "Likelihood" = 2, 
-                 #                                   "Posterior" = 3),
-                 #                    selected = c(1, 2, 3),
-                 #                    inline = TRUE,
-                 #                    fill = FALSE,
-                 #                    outline = FALSE,
-                 #                    status = "primary")
-                 
-                 ),
-               
-               # Show a plot of the generated distributions
+                                    status = "primary")),
                mainPanel(width = 8,
-                         plotOutput("distPlot")
-                         )
-               )
-             ),
-    
-    tabPanel("Heat Map",
+                         plotOutput("distPlot")))),
+    tabPanel(title = "Heat Map",
              fluidPage(
                fluidRow(column(12,
                                h4("Interactive Heat Map:"),
@@ -277,8 +245,8 @@ ui <- bootstrapPage(
                                hr()
                                ),
                sidebarPanel(
-                 sliderInput("hr_heat",
-                             "Posterior Value of Interest:",
+                 sliderInput(inputId = "hr_heat",
+                             label = "Posterior Value of Interest:",
                              min = 0.5,
                              max = 1.25,
                              value = 0.9,
@@ -286,14 +254,7 @@ ui <- bootstrapPage(
                              ticks = FALSE)
                ),
                mainPanel(
-                 plotOutput("heatPlot")
-                 )
-               )
-               )
-               )
-             )
-    )
-)
+                 plotOutput("heatPlot"))))))))
 
 server <- function(input, output, session) {
   
