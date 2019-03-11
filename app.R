@@ -6,6 +6,7 @@ library(tidyverse)
 library(shinyjs)
 library(shinyWidgets)
 library(RColorBrewer)
+library(tidybayes)
 
 ui <- bootstrapPage(
   useShinyjs(),
@@ -234,7 +235,16 @@ ui <- bootstrapPage(
                                     label = "Show Posterior Area of Interest?",
                                     choices = list("Yes" = 1,
                                                    "No" = 0),
-                                    selected = 0,
+                                    selected = 1,
+                                    inline = TRUE,
+                                    fill = FALSE,
+                                    outline = FALSE,
+                                    status = "primary"),
+                 prettyRadioButtons("cred_alpha",
+                                    label = "Show Posterior Credible Interval?",
+                                    choices = list("Yes" = 1,
+                                                   "No" = 0),
+                                    selected = 1,
                                     inline = TRUE,
                                     fill = FALSE,
                                     outline = FALSE,
@@ -607,7 +617,7 @@ server <- function(input, output, session) {
     })
   
   # Plot data
-  x <- seq(-5, 3, by = 0.005)
+  x <- seq(-5, 3, by = 0.01)
   prior_plot <- reactive({dnorm(x, prior_theta(), prior_sd())})
   likelihood_plot <- reactive({dnorm(x, likelihood_theta(), likelihood_sd())})
   posterior_plot <- reactive({dnorm(x, post_theta(), post_sd())})
@@ -639,6 +649,18 @@ server <- function(input, output, session) {
   # Credible interval
   ci_in <- reactive({input$ci})
   
+  lower_cred <- reactive({
+    round(exp(qnorm((1 - (ci_in()/100)) / 2, post_theta(), post_sd())), 2)
+  })
+  
+  upper_cred <- reactive({
+    round(exp(qnorm(1 - (1 - (ci_in()/100)) / 2, post_theta(), post_sd())), 2)
+  })
+  
+  mid_cred <- reactive({
+    round(exp(qnorm(0.5, post_theta(), post_sd())), 2)
+  })
+  
   # HR Post
   hr_post <- reactive({input$hr_post})
   
@@ -649,6 +671,9 @@ server <- function(input, output, session) {
   
   # Posterior alpha (toggle)
   post_alpha <- reactive({as.numeric(input$post_alpha)})
+  
+  # Credible Interval alpha (toggle)
+  cred_alpha <- reactive({as.numeric(input$cred_alpha)})
   
   # Dynamic Plot
    output$distPlot <- renderPlot({
@@ -668,6 +693,13 @@ server <- function(input, output, session) {
                   color = post_col,
                   size = 0.75, linetype = "dashed", 
                   alpha = post_alpha() * 0.75) + 
+       geom_segment(aes(y = 1, yend = 1,
+                        x = lower_cred(), xend = upper_cred()),
+                    size = 1.5,
+                    alpha = cred_alpha() * 1) + 
+       geom_point(aes(x = mid_cred(), y = 1),
+                  size = 2.5,
+                  alpha = cred_alpha() * 1) + 
        scale_color_brewer(name = NULL, type = "qual", palette = "Dark2",
                           breaks = c("likelihood", "prior", "posterior"),
                           labels = c("Prior", "Likelihood", "Posterior")) + 
@@ -693,9 +725,9 @@ server <- function(input, output, session) {
        annotate(geom = "text",
                 label = paste("Posterior median (", ci_in(),
                               paste("% credible interval): ",
-                                    round(exp(qnorm(0.5, post_theta(), post_sd())), 2),
-                                    paste(" (", round(exp(qnorm((1 - (ci_in()/100)) / 2, post_theta(), post_sd())), 2), sep = ""),
-                              paste(", ", round(exp(qnorm(1 - (1 - (ci_in()/100)) / 2, post_theta(), post_sd())), 2), sep = ""),
+                                    mid_cred(),
+                                    paste(" (", lower_cred(), sep = ""),
+                              paste(", ", upper_cred(), sep = ""),
                               paste(")", sep = ""), sep = ""), sep = ""),
                 x = max_x(), y = max(plot_data()$y) - (2 * max(plot_data()$y)/25), hjust = 1,
                 fontface = "bold") + 
