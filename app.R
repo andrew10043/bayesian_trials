@@ -648,7 +648,7 @@ server <- function(input, output, session) {
                   alpha = cred_alpha() * 1) + 
        scale_color_brewer(name = NULL, type = "qual", palette = "Dark2",
                           breaks = c("likelihood", "prior", "posterior"),
-                          labels = c("Prior", "Likelihood", "Posterior")) + 
+                          labels = c("Likelihood", "Prior", "Posterior")) + 
        xlim(0, max_x()) + 
        labs(
          x = long_lab(),
