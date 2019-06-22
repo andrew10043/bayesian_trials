@@ -757,7 +757,7 @@ server <- function(input, output, session) {
      tagList("Questions & Improvements: ", url_email)
    })
    output$link_twitter <- renderUI({
-     tagList("This is an interactive tool for Bayesian re-analysis clinical trials. Code by Dan Lane", url_dlt, "and adapted by Ben Andrew", url_bat, "Methods adapted from", url_methods) 
+     tagList("This is an interactive tool for Bayesian re-analysis clinical trials. Code by Dan Lane", url_dlt, "and Ben Andrew", url_bat, "Methods adapted from", url_methods) 
    })
    output$step_1 <- renderUI({
      tagList("Enter basic results from the clinical trial on the Study Data tab. This will allow for approximation of the likelihood distribution.") 
